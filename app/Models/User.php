@@ -12,7 +12,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 class User extends Authenticatable // Optional: implements MustVerifyEmail if using email verification feature
 {
     use HasFactory, Notifiable;
-
+    protected $primaryKey = 'UserID';
     /**
      * The table associated with the model.
      *
@@ -86,10 +86,10 @@ class User extends Authenticatable // Optional: implements MustVerifyEmail if us
      */
     public function skills(): BelongsToMany
     {
-        // Assuming 'user_skills' is the pivot table name
         return $this->belongsToMany(Skill::class, 'user_skills', 'UserID', 'SkillID')
-                    ->withPivot('Stage') // Include the 'Stage' attribute from pivot
-                    ->withTimestamps(); // If pivot table has timestamps
+                    ->using(UserSkill::class) // <--- أخبر العلاقة باستخدام نموذج Pivot هذا
+                    ->withPivot('Stage');     // احتفظ بالبيانات الإضافية
+                    // لا تستخدم ->withTimestamps() هنا لأن النموذج UserSkill يعطله
     }
 
     /**

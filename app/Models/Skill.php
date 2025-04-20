@@ -24,7 +24,7 @@ class Skill extends Model
     public function users(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'user_skills', 'SkillID', 'UserID')
-                    ->withPivot('Stage')
-                    ->withTimestamps(); // If pivot table has timestamps
+                    ->using(UserSkill::class)
+                    ->withPivot('Stage');
     }
 }

@@ -13,21 +13,25 @@ return new class extends Migration
     {
         Schema::create('training_courses', function (Blueprint $table) {
             $table->bigIncrements('CourseID');
-            $table->unsignedBigInteger('UserID'); // User who created/manages
-            $table->string('Course name'); // Corrected spelling
-            $table->string('Trainers name')->nullable(); // Corrected spelling
-            $table->text('Course Description')->nullable(); // Corrected spelling
-            $table->string('Site')->nullable(); // (حضوري, اونلاين)
-            $table->string('Trainers Site')->nullable(); // Corrected spelling (Training provider)
-            $table->date('Start Date')->nullable(); // Corrected spelling
-            $table->date('End Date')->nullable(); // Corrected spelling
-            $table->string('Enroll Hyper Link')->nullable(); // Corrected spelling
-            $table->string('Stage')->nullable(); // (مبتدئ, متوسط, متقدم)
-            $table->string('Certificate')->nullable(); // (يوجد, لا يوجد) -> Consider boolean `has_certificate`
-            // $table->boolean('has_certificate')->default(false); // Alternative
+            // اجعل هذا العمود يقبل القيمة NULL
+            $table->unsignedBigInteger('UserID')->nullable(); // <--- التعديل هنا
+            $table->string('Course name');
+            $table->string('Trainers name')->nullable();
+            $table->text('Course Description')->nullable();
+            $table->string('Site')->nullable();
+            $table->string('Trainers Site')->nullable();
+            $table->date('Start Date')->nullable();
+            $table->date('End Date')->nullable();
+            $table->string('Enroll Hyper Link')->nullable();
+            $table->string('Stage')->nullable();
+            $table->string('Certificate')->nullable();
             $table->timestamps();
 
-            $table->foreign('UserID')->references('UserID')->on('users')->onDelete('set null'); // Or cascade, restrict?
+            // الآن يمكن تطبيق هذا القيد بشكل صحيح
+            $table->foreign('UserID')
+                  ->references('UserID') // تأكد من أن المفتاح الرئيسي في جدول users هو UserID
+                  ->on('users')
+                  ->onDelete('set null'); // إذا حُذف المستخدم، اجعل UserID هنا NULL
         });
     }
 
@@ -36,6 +40,12 @@ return new class extends Migration
      */
     public function down(): void
     {
+
+        // من الجيد إزالة القيد قبل حذف الجدول (اختياري لكن ممارسة جيدة)
+        Schema::table('training_courses', function (Blueprint $table) {
+            // اسم القيد الافتراضي الذي يولده Laravel هو table_column_foreign
+            $table->dropForeign(['UserID']); // أو $table->dropForeign('training_courses_userid_foreign');
+        });
         Schema::dropIfExists('training_courses');
     }
 };
