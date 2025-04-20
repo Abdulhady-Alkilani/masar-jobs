@@ -12,8 +12,20 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('job_applications', function (Blueprint $table) {
-            $table->id();
+            $table->bigIncrements('ID'); // As per schema
+            $table->unsignedBigInteger('UserID'); // User applying
+            $table->unsignedBigInteger('JobID'); // Job applied for
+            $table->string('Status')->nullable(); // Application status
+            $table->date('Date'); // Application date (or use created_at)
+            $table->text('Description')->nullable(); // Cover letter/notes
+            $table->string('CV')->nullable(); // Path to CV file
             $table->timestamps();
+
+            $table->foreign('UserID')->references('UserID')->on('users')->onDelete('cascade');
+            $table->foreign('JobID')->references('JobID')->on('job_opportunities')->onDelete('cascade');
+
+            // Optional: Prevent double application
+            $table->unique(['UserID', 'JobID']);
         });
     }
 

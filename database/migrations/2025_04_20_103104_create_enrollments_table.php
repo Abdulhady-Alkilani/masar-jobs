@@ -12,8 +12,19 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('enrollments', function (Blueprint $table) {
-            $table->id();
-            $table->timestamps();
+            $table->bigIncrements('EnrollmentID'); // As per schema, corrected spelling
+            $table->unsignedBigInteger('UserID');
+            $table->unsignedBigInteger('CourseID');
+            $table->string('Status')->nullable(); // (مكتمل, قيد التقدم, ملغي)
+            $table->date('Date'); // Enrollment date (or use created_at)
+            $table->date('Complet Date')->nullable(); // Completion date, corrected spelling
+            $table->timestamps(); // Tracks creation/update of the enrollment itself
+
+            $table->foreign('UserID')->references('UserID')->on('users')->onDelete('cascade');
+            $table->foreign('CourseID')->references('CourseID')->on('training_courses')->onDelete('cascade');
+
+            // Prevent enrolling in the same course twice
+            $table->unique(['UserID', 'CourseID']);
         });
     }
 

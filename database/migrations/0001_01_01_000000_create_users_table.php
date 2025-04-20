@@ -12,13 +12,22 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('users', function (Blueprint $table) {
-            $table->id();
-            $table->string('name');
+            // $table->id(); // Default Laravel convention
+            $table->bigIncrements('UserID'); // Matching your schema 'UserID'
+            $table->string('first_name');
+            $table->string('last_name');
+            $table->string('username')->unique();
             $table->string('email')->unique();
-            $table->timestamp('email_verified_at')->nullable();
+            $table->boolean('email_verified')->default(false); // Using boolean as per schema desc
+            // $table->timestamp('email_verified_at')->nullable(); // Alternative Laravel way
             $table->string('password');
+            $table->string('phone')->nullable(); // Optional phone
+            $table->string('photo')->nullable(); // Optional photo path/URL
+            $table->string('status')->default('مفعل'); // Status with default
+            $table->string('type'); // User type (خريج, خبير استشاري, مدير شركة, Admin)
+            // $table->date('sign_up_date'); // Your schema has this - covered by created_at
             $table->rememberToken();
-            $table->timestamps();
+            $table->timestamps(); // Adds created_at (for sign_up_date) and updated_at
         });
 
         Schema::create('password_reset_tokens', function (Blueprint $table) {

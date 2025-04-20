@@ -12,8 +12,9 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('skills', function (Blueprint $table) {
-            $table->id();
-            $table->timestamps();
+            $table->bigIncrements('SkillID');
+            $table->string('Name');
+            // No timestamps needed based on schema
         });
     }
 

@@ -12,8 +12,18 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('user_skills', function (Blueprint $table) {
-            $table->id();
-            $table->timestamps();
+            $table->bigIncrements('id'); // Simple auto-incrementing ID for the pivot record itself
+            $table->unsignedBigInteger('UserID');
+            $table->unsignedBigInteger('SkillID');
+            $table->string('Stage')->nullable(); // Skill level
+            // $table->timestamps(); // Optional: if you want track when the skill was added/updated
+
+            // Foreign key constraints
+            $table->foreign('UserID')->references('UserID')->on('users')->onDelete('cascade');
+            $table->foreign('SkillID')->references('SkillID')->on('skills')->onDelete('cascade');
+
+            // Ensure a user doesn't have the same skill listed twice
+            $table->unique(['UserID', 'SkillID']);
         });
     }
 

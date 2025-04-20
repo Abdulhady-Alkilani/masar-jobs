@@ -12,8 +12,16 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('articles', function (Blueprint $table) {
-            $table->id();
-            $table->timestamps();
+            $table->bigIncrements('ArticleID'); // Corrected spelling
+            $table->unsignedBigInteger('UserID');
+            $table->string('Title'); // Corrected spelling
+            $table->text('Description'); // Corrected spelling, using text
+            $table->date('Date'); // Publication date
+            $table->string('Type')->nullable(); // Article type (استشاري, نصائح)
+            $table->string('Article Photo')->nullable(); // Path to photo
+            $table->timestamps(); // Adds created_at and updated_at
+
+            $table->foreign('UserID')->references('UserID')->on('users')->onDelete('cascade'); // Or set null if user deleted
         });
     }
 
