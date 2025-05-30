@@ -3,26 +3,14 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
-use App\Models\User; // Make sure to use your User model
+use App\Models\User; // تأكد من استيراد المودل
 use Illuminate\Foundation\Auth\RegistersUsers;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
-use Illuminate\Http\Request; // Import Request
-use App\Models\Profile; // Import Profile if creating basic profile on registration
+use Illuminate\Http\Request; // استيراد Request للاستخدام في registered (اختياري)
 
 class RegisterController extends Controller
 {
-    /*
-    |--------------------------------------------------------------------------
-    | Register Controller
-    |--------------------------------------------------------------------------
-    |
-    | This controller handles the registration of new users as well as their
-    | validation and creation. By default this controller uses a trait to
-    | provide this functionality without requiring any additional code.
-    |
-    */
-
     use RegistersUsers;
 
     /**
@@ -30,7 +18,7 @@ class RegisterController extends Controller
      *
      * @var string
      */
-    protected $redirectTo = '/home'; // Or redirect to profile creation, verification notice, etc.
+    protected $redirectTo = '/home'; // أو المسار المناسب بعد التسجيل كخريج
 
     /**
      * Create a new controller instance.
@@ -50,15 +38,14 @@ class RegisterController extends Controller
      */
     protected function validator(array $data)
     {
-        // Adjust validation rules based on your User model requirements
         return Validator::make($data, [
             'first_name' => ['required', 'string', 'max:255'],
             'last_name' => ['required', 'string', 'max:255'],
-            'username' => ['required', 'string', 'max:255', 'unique:users,username'], // Use correct column name
-            'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'], // Use correct column name
+            'username' => ['required', 'string', 'max:255', 'unique:users,username'],
+            'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
-            'phone' => ['nullable', 'string', 'max:20'], // Optional phone
-            'type' => ['required', 'string', 'in:خريج,خبير استشاري,مدير شركة'], // Allowed types for registration
+            'phone' => ['nullable', 'string', 'max:20'],
+            // لا يوجد تحقق من 'type' هنا لأنه لم يعد يُرسل من النموذج
         ]);
     }
 
@@ -68,40 +55,37 @@ class RegisterController extends Controller
      * @param  array  $data
      * @return \App\Models\User
      */
-    protected function create(array $data)
+    protected function create(array $data): User
     {
-        $user = User::create([
+        return User::create([
             'first_name' => $data['first_name'],
             'last_name' => $data['last_name'],
             'username' => $data['username'],
             'email' => $data['email'],
             'password' => Hash::make($data['password']),
             'phone' => $data['phone'] ?? null,
-            'type' => $data['type'],
-            'status' => 'مفعل', // Or 'معلق' pending verification/approval
-            // 'email_verified' => false, // If using MustVerifyEmail
+            'type' => 'خريج', // <-- !!! تعيين النوع افتراضيًا هنا !!!
+            'status' => 'مفعل', // أو 'معلق' إذا كنت تريد موافقة أو تحقق
+            // 'photo' => null, // إذا كان لديك هذا الحقل
+            // 'email_verified_at' => now(), // إذا كنت تريد تفعيل البريد مباشرة
         ]);
-
-        // Optionally create a basic profile automatically
-        // Profile::create(['UserID' => $user->UserID]);
-
-        // If type is 'مدير شركة', maybe trigger a company creation request/approval flow here
-
-        return $user;
     }
 
-     /**
-      * The user has been registered.
-      *
-      * @param  \Illuminate\Http\Request  $request
-      * @param  mixed  $user
-      * @return mixed
-      */
+    /**
+     * The user has been registered.
+     * يمكنك تخصيص ما يحدث بعد التسجيل هنا.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @param  mixed  $user
+     * @return mixed
+     */
     // protected function registered(Request $request, $user)
     // {
-    //     // Optional: Send welcome email, redirect based on type, etc.
-    //     if ($user->type === 'مدير شركة') {
-    //        // Maybe redirect to company info form or pending approval page
-    //     }
+    //     // يمكنك هنا إضافة منطق إضافي، مثل إرسال بريد ترحيبي،
+    //     // أو توجيه المستخدم إلى صفحة إكمال الملف الشخصي الخاصة بالخريج.
+    //     // إذا لم تقم بإلغاء هذه الدالة، سيتم التوجيه إلى $this->redirectTo
+    //
+    //     // مثال للتوجيه لداشبورد الخريج مباشرة
+    //     // return redirect()->route('graduate.dashboard');
     // }
 }

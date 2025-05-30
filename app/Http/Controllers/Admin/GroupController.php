@@ -14,7 +14,7 @@ class GroupController extends Controller
      */
     public function __construct()
     {
-        $this->middleware(['auth'/*, 'isAdmin'*/]);
+        // $this->middleware(['auth', 'isAdmin']);
     }
 
     /**
@@ -22,9 +22,12 @@ class GroupController extends Controller
      */
     public function index(Request $request)
     {
-         // Reuse public index view or create admin specific one
-         $groups = Group::latest()->paginate(20);
-         return view('admin.groups.index', compact('groups')); // Use admin view
+         // !!! التصحيح هنا: الترتيب حسب المفتاح الأساسي بدلاً من latest() !!!
+         $groups = Group::orderBy('GroupID', 'desc')->paginate(20);
+         // أو يمكنك عدم الترتيب إذا لم يكن مهمًا:
+         // $groups = Group::paginate(20);
+
+         return view('admin.groups.index', compact('groups'));
     }
 
     /**
@@ -43,6 +46,7 @@ class GroupController extends Controller
         // TODO: Use Form Request Validation
         $validatedData = $request->validate([
             // Add name/description fields to Group model/table if needed
+             // تأكد من تطابق اسم الحقل هنا مع قاعدة البيانات والمودل
             'Telegram Hyper Link' => 'required|url|max:2048|unique:groups,Telegram Hyper Link',
         ]);
 
@@ -56,7 +60,7 @@ class GroupController extends Controller
      */
     public function show(Group $group)
     {
-         return view('admin.groups.show', compact('group')); // Admin show view
+         return view('admin.groups.show', compact('group'));
     }
 
     /**
@@ -73,6 +77,7 @@ class GroupController extends Controller
     public function update(Request $request, Group $group)
     {
         // TODO: Use Form Request Validation
+         // تأكد من تطابق اسم الحقل والمفتاح الأساسي هنا
         $validatedData = $request->validate([
              'Telegram Hyper Link' => ['required', 'url', 'max:2048', Rule::unique('groups', 'Telegram Hyper Link')->ignore($group->GroupID, 'GroupID')],
         ]);
