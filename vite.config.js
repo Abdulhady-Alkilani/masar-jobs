@@ -1,17 +1,17 @@
 import { defineConfig } from 'vite';
 import laravel from 'laravel-vite-plugin';
-import vue from '@vitejs/plugin-vue';
+import vue from '@vitejs/plugin-vue'; // !!! استيراد إضافة Vue !!!
 
 export default defineConfig({
     plugins: [
         laravel({
             input: [
-                'resources/sass/app.scss',
-                'resources/js/app.js',
+                'resources/sass/app.scss', // لـ Bootstrap
+                'resources/js/app.js',     // لـ Bootstrap JS و Vue app initialization
             ],
             refresh: true,
         }),
-        vue({
+        vue({ // !!! إضافة Vue plugin هنا !!!
             template: {
                 transformAssetUrls: {
                     base: null,
@@ -20,9 +20,9 @@ export default defineConfig({
             },
         }),
     ],
-    resolve: {
-        alias: {
-            vue: 'vue/dist/vue.esm-bundler.js',
-        },
-    },
+    // resolve: {
+    //     alias: {
+    //         //  '~bootstrap': path.resolve(__dirname, 'node_modules/bootstrap'),
+    //     }
+    // },
 });

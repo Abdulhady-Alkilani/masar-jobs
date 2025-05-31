@@ -14,7 +14,7 @@ class CompanyRequestApprovalController extends Controller
      */
     public function __construct()
     {
-        $this->middleware(['auth'/*, 'isAdmin'*/]);
+        // $this->middleware(['auth', 'isAdmin']); // تفعيل Middleware
     }
 
     /**
@@ -22,27 +22,27 @@ class CompanyRequestApprovalController extends Controller
      */
     public function index()
     {
-        // Assumes a 'Status' column ('Pending', 'Approved', 'Rejected') exists on the Company model
-        $pendingCompanies = Company::where('Status', 'Pending') // Adjust status name if needed
-                                   ->with('user') // Load the requesting user
+        // ... (الكود الخاص بـ index) ...
+        $pendingCompanies = Company::where('Status', 'Pending') // تأكد من اسم الحالة
+                                   ->with('user')
                                    ->latest()
                                    ->paginate(20);
-
         return view('admin.company_requests.index', compact('pendingCompanies'));
     }
 
     /**
      * Display the specified pending company request.
      */
-    public function show(Company $company) // Use company model directly
+    public function show(Company $company)
     {
-        // Ensure it's actually a pending request for clarity, although route might handle this
-        if ($company->Status !== 'Pending') {
-            // Maybe redirect to the main company view?
-            return redirect()->route('admin.companies.show', $company);
+        // أزل أو علق الـ dd من هنا
+    
+        if ($company->Status !== 'Pending') { // تأكد من اسم الحالة الصحيح
+            // قد ترغب في إعادة التوجيه إلى صفحة عرض الشركة العامة بدلاً من الطلبات
+            return redirect()->route('admin.companies.show', $company)->with('warning', 'This company request has already been processed.');
         }
-        $company->load('user');
-        return view('admin.company_requests.show', compact('company'));
+        $company->load('user'); // تحميل بيانات المستخدم المرتبط
+        return view('admin.company_requests.show', compact('company')); // تمرير الكائن الممتلئ بالبيانات
     }
 
     /**

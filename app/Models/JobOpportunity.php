@@ -7,52 +7,60 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-
 class JobOpportunity extends Model
 {
     use HasFactory;
 
-    protected $table = 'job_opportunities'; // Corrected spelling
+    protected $table = 'job_opportunities';
     protected $primaryKey = 'JobID';
 
+    /**
+     * السمات القابلة للملء بشكل جماعي.
+     */
     protected $fillable = [
-        'UserID', // The user (company manager/recruiter) who posted the job
-        'Job Title', // Recommended: job_title
-        'Job Description', // Recommended: job_description
+        'UserID',       // المستخدم المنشئ (مدير/أدمن)
+        'CompanyID',    // !!! المفتاح الأجنبي للشركة !!!
+        'Job Title',
+        'Job Description',
         'Qualification',
-        'Site', // Location
-        'Date', // Posting date (use created_at?)
-        'Skills', // Could be text, JSON, or ideally related to Skills table
-        'Type', // (تدريب, وظيفة)
-        'End Date', // Recommended: end_date
-        'Status', // (مفعل, معلق, محذوف)
-    ];
-
-    protected $casts = [
-        'Date' => 'date',
-        'End Date' => 'date',
-         // 'Skills' => 'array', // If storing skills as JSON
+        'Site',
+        'Date',
+        'Skills',
+        'Type',
+        'End Date',
+        'Status',
     ];
 
     /**
-     * Get the user (recruiter/company) who posted the job opportunity.
+     * السمات التي يجب تحويلها.
+     */
+    protected $casts = [
+        'Date' => 'datetime',
+        'End Date' => 'date',
+        // 'Skills' => 'array', // إذا كانت JSON
+    ];
+
+    /**
+     * علاقة الوظيفة بالمستخدم المنشئ.
      */
     public function user(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'UserID', 'UserID');
+        return $this->belongsTo(User::class, 'UserID', 'UserID'); // تأكد من المفتاح المحلي في User
     }
 
     /**
-     * Get the applications for this job opportunity.
+     * !!! علاقة الوظيفة بالشركة التي تنتمي إليها !!!
+     */
+    public function company(): BelongsTo
+    {
+        return $this->belongsTo(Company::class, 'CompanyID', 'CompanyID'); // تأكد من المفتاح المحلي في Company
+    }
+
+    /**
+     * علاقة الوظيفة بطلبات التقديم.
      */
     public function jobApplications(): HasMany
     {
         return $this->hasMany(JobApplication::class, 'JobID', 'JobID');
     }
-
-    // Optional: If Skills column links to Skills table (Many-to-Many)
-    // public function requiredSkills(): BelongsToMany
-    // {
-    //    return $this->belongsToMany(Skill::class, 'job_opportunity_skill', 'JobID', 'SkillID');
-    // }
 }
