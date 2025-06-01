@@ -4,10 +4,10 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Company;
-use App\Models\User; // To list managers when creating/editing
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
-use Illuminate\Support\Facades\Auth; // Needed for the Admin check (though middleware handles primary)
+use Illuminate\Support\Facades\Auth;
 
 class CompanyController extends Controller
 {
@@ -16,7 +16,7 @@ class CompanyController extends Controller
      */
     public function __construct()
     {
-        $this->middleware(['auth'/*, 'isAdmin'*/]);
+        // $this->middleware(['auth', 'isAdmin']);
     }
 
     /**
@@ -24,16 +24,25 @@ class CompanyController extends Controller
      */
     public function index(Request $request)
     {
-        // Reuse public index view or create admin specific one
-         $query = Company::query()->with('user'); // Load the manager user
+         $query = Company::query()->with('user'); // Load manager
 
+         // Add Filtering/Searching Logic
          if ($request->filled('search')) {
-             // Add search logic here
+              $searchTerm = $request->input('search');
+              $query->where(function ($q) use ($searchTerm) {
+                  $q->where('Name', 'like', "%{$searchTerm}%")
+                    ->orWhere('Email', 'like', "%{$searchTerm}%")
+                    ->orWhereHas('user', function($userQuery) use ($searchTerm) { // Search by manager username
+                        $userQuery->where('username', 'like', "%{$searchTerm}%");
+                    });
+              });
          }
-         // Add filtering by status if applicable
+          if ($request->filled('status') && in_array($request->input('status'), ['Approved', 'Pending', 'Rejected'])) {
+             $query->where('Status', $request->input('status'));
+         }
 
-         $companies = $query->latest()->paginate(20);
-         return view('admin.companies.index', compact('companies')); // Use admin view
+         $companies = $query->latest()->paginate(20)->withQueryString();
+         return view('admin.companies.index', compact('companies'));
     }
 
     /**
@@ -51,9 +60,8 @@ class CompanyController extends Controller
      */
     public function store(Request $request)
     {
-         // Reuse validation/logic from the public CompanyController store method (Admin version)
-        // TODO: Use Form Request Validation
         $validatedData = $request->validate([
+            // !!! تأكد أن اسم العمود في جدول users هو UserID !!!
             'UserID' => 'required|exists:users,UserID|unique:companies,UserID',
             'Name' => 'required|string|max:255',
             'Email' => 'nullable|email|max:255|unique:companies,Email',
@@ -61,9 +69,9 @@ class CompanyController extends Controller
             'Description' => 'nullable|string',
             'Country' => 'nullable|string|max:100',
             'City' => 'nullable|string|max:100',
-            'Detailed Address' => 'nullable|string|max:255',
-            'Web site' => 'nullable|url|max:2048',
-            'Status' => 'nullable|string', // Admin sets status directly if needed
+            'Detailed Address' => 'nullable|string|max:255', // يفضل snake_case
+            'Web site' => 'nullable|url|max:2048', // يفضل snake_case
+            'Status' => ['required', 'string', Rule::in(['Approved', 'Pending', 'Rejected'])], // يجب أن يكون مطلوبًا
         ]);
 
         Company::create($validatedData);
@@ -74,44 +82,48 @@ class CompanyController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show(Company $company)
+    public function show(Company $company) // Route Model Binding
     {
-         // Reuse public show view or create admin specific one
+         // !!! الآن بعد إضافة العلاقة في المودل، هذا السطر سيعمل !!!
+         // Eager load user (manager) and related job opportunities
          $company->load(['user', 'jobOpportunities' => function ($query) {
-             $query->latest(); // Show all jobs, not just active for admin
+             $query->latest('Date'); // Order loaded jobs by date
          }]);
-         return view('admin.companies.show', compact('company')); // Use admin view
+
+         // يمكنك أيضًا تحميل الدورات إذا كانت العلاقة موجودة
+         // $company->load('trainingCourses');
+
+         return view('admin.companies.show', compact('company')); // تمرير الشركة ببياناتها وعلاقاتها المحملة
     }
 
     /**
      * Show the form for editing the specified resource.
      */
-    public function edit(Company $company)
+    public function edit(Company $company) // Route Model Binding
     {
-         // Find managers (might allow changing manager, though complex)
-         // $managers = User::where('type', 'مدير شركة')->orderBy('username')->pluck('username', 'UserID');
-         // $company->load('user'); // Load current manager
-        return view('admin.companies.edit', compact('company'/*, 'managers'*/));
+        // لا تحتاج لتحميل علاقات هنا عادةً
+        return view('admin.companies.edit', compact('company'));
     }
 
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, Company $company)
+    public function update(Request $request, Company $company) // Route Model Binding
     {
-         // Reuse validation/logic from the public CompanyController update method (Admin version)
-         // TODO: Use Form Request Validation
+        // !!! تأكد من اسم المفتاح الأساسي للشركة ('CompanyID' أو 'id') !!!
+        $primaryKeyName = $company->getKeyName();
+
         $validatedData = $request->validate([
-            // 'UserID' => ['sometimes', 'required', Rule::exists('users','UserID'), Rule::unique('companies','UserID')->ignore($company->CompanyID, 'CompanyID')], // Allow changing manager?
             'Name' => 'required|string|max:255',
-            'Email' => ['nullable', 'email', 'max:255', Rule::unique('companies','Email')->ignore($company->CompanyID, 'CompanyID')],
+            'Email' => ['nullable', 'email', 'max:255', Rule::unique('companies','Email')->ignore($company->{$primaryKeyName}, $primaryKeyName)],
             'Phone' => 'nullable|string|max:20',
             'Description' => 'nullable|string',
             'Country' => 'nullable|string|max:100',
             'City' => 'nullable|string|max:100',
             'Detailed Address' => 'nullable|string|max:255',
             'Web site' => 'nullable|url|max:2048',
-            'Status' => 'nullable|string', // Admin sets status
+            'Status' => ['required', 'string', Rule::in(['Approved', 'Pending', 'Rejected'])], // يجب أن يكون مطلوبًا
+             // لا تسمح بتغيير UserID من هنا عادةً
         ]);
 
         $company->update($validatedData);
@@ -122,10 +134,14 @@ class CompanyController extends Controller
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(Company $company)
+    public function destroy(Company $company) // Route Model Binding
     {
-        // Reuse logic from public CompanyController destroy method (Admin version)
+        // أضف منطق حذف البيانات المرتبطة هنا إذا لم تكن تستخدم cascade on delete
+        // $company->jobOpportunities()->delete(); // مثال (كن حذرًا!)
+        // $company->trainingCourses()->delete(); // مثال
+
         $company->delete();
+
         return redirect()->route('admin.companies.index')->with('success', 'Company deleted successfully.');
     }
 }

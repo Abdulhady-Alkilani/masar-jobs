@@ -6,8 +6,16 @@ import 'bootstrap';
  * CSRF token as a header based on the value of the "XSRF" token cookie.
  */
 
-import axios from 'axios';
-window.axios = axios;
+// import axios from 'axios';
+// window.axios = axios;
+ // (هذا عادةً يستورد axios)
+
+// استيراد Bootstrap JS (الـ bundle الذي يتضمن Popper)
+import * as bootstrap from 'bootstrap';
+window.bootstrap = bootstrap; // اختياري: لجعلها متاحة عالميًا
+
+// يمكنك استيراد مكونات محددة إذا أردت
+// import { Dropdown, Collapse } from 'bootstrap';
 
 window.axios.defaults.headers.common['X-Requested-With'] = 'XMLHttpRequest';
 

@@ -75,10 +75,13 @@ class TrainingCourseController extends Controller
      * Display the specified resource.
      */
     public function show(TrainingCourse $trainingCourse)
-    {
-        $trainingCourse->load('creator', 'enrollments.user'); // Load related data for admin
-        return view('admin.training_courses.show', compact('trainingCourse'));
-    }
+{
+    // تحميل العلاقات اللازمة للعرض
+    $trainingCourse->load(['creator', 'enrollments.user']); // مثال
+
+    // !!! تأكد أنه يعيد الـ View الصحيح !!!
+    return view('admin.training_courses.show', compact('trainingCourse'));
+}
 
     /**
      * Show the form for editing the specified resource.

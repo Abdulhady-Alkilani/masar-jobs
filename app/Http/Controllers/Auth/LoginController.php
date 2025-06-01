@@ -4,29 +4,19 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Foundation\Auth\AuthenticatesUsers;
-use Illuminate\Http\Request; // Import Request
+use Illuminate\Http\Request; // <--- أضف هذا السطر
+use Illuminate\Support\Facades\Auth; // <--- أضف هذا السطر
 
 class LoginController extends Controller
 {
-    /*
-    |--------------------------------------------------------------------------
-    | Login Controller
-    |--------------------------------------------------------------------------
-    |
-    | This controller handles authenticating users for the application and
-    | redirecting them to your home screen. The controller uses a trait
-    | to conveniently provide its functionality to your applications.
-    |
-    */
-
     use AuthenticatesUsers;
 
     /**
      * Where to redirect users after login.
-     *
+     * (سيتم تجاوز هذا بواسطة دالة authenticated)
      * @var string
      */
-    protected $redirectTo = '/home'; // Adjust as needed, e.g., based on role
+    // protected $redirectTo = '/home'; // يمكنك إزالة هذا أو تركه كاحتياط
 
     /**
      * Create a new controller instance.
@@ -36,43 +26,45 @@ class LoginController extends Controller
     public function __construct()
     {
         $this->middleware('guest')->except('logout');
+        // middleware auth أصبح الآن يُطبق ضمنيًا في trait logout
+        // $this->middleware('auth')->only('logout'); // يمكنك إزالته إذا أردت
     }
 
     /**
-     * Get the needed authorization credentials from the request.
-     * Use 'username' or 'email' for login.
+     * The user has been authenticated.
+     * يتم استدعاؤها بعد نجاح تسجيل الدخول.
      *
      * @param  \Illuminate\Http\Request  $request
-     * @return array
+     * @param  mixed  $user // المستخدم الذي قام بتسجيل الدخول
+     * @return mixed
      */
-    protected function credentials(Request $request)
+    protected function authenticated(Request $request, $user)
     {
-        $field = filter_var($request->input($this->username()), FILTER_VALIDATE_EMAIL)
-            ? $this->username() // 'email' by default
-            : 'username'; // Allow login with username
-
-        return [
-            $field => $request->input($this->username()),
-            'password' => $request->input('password'),
-        ];
+        // التحقق من نوع المستخدم (افترض أن لديك عمود 'type' في جدول users)
+        switch ($user->type) {
+            case 'Admin':
+                return redirect()->route('admin.dashboard'); // توجيه الأدمن
+                break;
+            case 'مدير شركة':
+                // تحقق إذا كانت شركته معتمدة أو لا تزال معلقة (إذا كان لديك حقل Status)
+                // if ($user->company && $user->company->Status === 'Approved') {
+                //     return redirect()->route('company-manager.dashboard');
+                // } else {
+                //     // توجيهه لصفحة انتظار الموافقة أو لوحة تحكم محدودة
+                //     return redirect('/company/pending-approval'); // مثال
+                // }
+                return redirect()->route('company-manager.dashboard'); // توجيه مدير الشركة
+                break;
+            case 'خبير استشاري':
+                return redirect()->route('consultant.dashboard'); // توجيه الاستشاري
+                break;
+            case 'خريج':
+                return redirect()->route('graduate.dashboard'); // توجيه الخريج
+                break;
+            default:
+                // إذا لم يكن أي من الأنواع المحددة، وجهه إلى الصفحة الرئيسية الافتراضية
+                return redirect('/home');
+                break;
+        }
     }
-
-     /**
-      * The user has been authenticated.
-      * Optionally redirect based on role here.
-      *
-      * @param  \Illuminate\Http\Request  $request
-      * @param  mixed  $user
-      * @return mixed
-      */
-    // protected function authenticated(Request $request, $user)
-    // {
-    //     if ($user->type === 'Admin') {
-    //         return redirect()->route('admin.dashboard');
-    //     } elseif ($user->type === 'مدير شركة') {
-    //          return redirect()->route('company-manager.dashboard');
-    //     } // etc...
-    //
-    //     return redirect($this->redirectTo);
-    // }
 }
