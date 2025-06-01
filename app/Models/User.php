@@ -8,26 +8,14 @@ use Illuminate\Notifications\Notifiable;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Laravel\Sanctum\HasApiTokens; // <--- 1. إضافة استيراد التريت
 
-class User extends Authenticatable // Optional: implements MustVerifyEmail if using email verification feature
+class User extends Authenticatable
 {
-    use HasFactory, Notifiable;
-    protected $primaryKey = 'UserID';
-    /**
-     * The table associated with the model.
-     *
-     * If your table name doesn't follow Laravel's convention (plural snake_case),
-     * uncomment and set the table name explicitly.
-     * // protected $table = 'users';
-     */
+    // <--- 2. إضافة التريت إلى قائمة use داخل الكلاس
+    use HasFactory, Notifiable, HasApiTokens;
 
-    /**
-      * The primary key associated with the table.
-      * Default is 'id'. Uncomment and change if using 'UserID'.
-      * // protected $primaryKey = 'UserID';
-      * // public $incrementing = false; // If primary key is not auto-incrementing
-      * // protected $keyType = 'string'; // If primary key is not an integer
-      */
+    protected $primaryKey = 'UserID'; // تأكد أن هذا مطابق لجدولك
 
     /**
      * The attributes that are mass assignable.
@@ -44,7 +32,6 @@ class User extends Authenticatable // Optional: implements MustVerifyEmail if us
         'photo',
         'status',
         'type',
-        // 'email_verified_at', // Handled separately or during registration/verification logic
     ];
 
     /**
@@ -67,87 +54,58 @@ class User extends Authenticatable // Optional: implements MustVerifyEmail if us
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
-            // 'sign_up_date' => 'date', // If you add this column explicitly
         ];
     }
 
     // --- Relationships ---
 
-    /**
-     * Get the profile associated with the user.
-     */
     public function profile(): HasOne
     {
-        return $this->hasOne(Profile::class, 'UserID'); // Adjust FK if needed
+        return $this->hasOne(Profile::class, 'UserID', 'UserID'); // استخدام المفتاح الرئيسي الصحيح
     }
 
-    /**
-     * The skills that belong to the user.
-     */
     public function skills(): BelongsToMany
     {
+        // تم تعديل هذا ليتوافق مع الكود السابق (إذا كنت تستخدم نموذج Pivot)
         return $this->belongsToMany(Skill::class, 'user_skills', 'UserID', 'SkillID')
-                    ->using(UserSkill::class) // <--- أخبر العلاقة باستخدام نموذج Pivot هذا
-                    ->withPivot('Stage');     // احتفظ بالبيانات الإضافية
-                    // لا تستخدم ->withTimestamps() هنا لأن النموذج UserSkill يعطله
+                    // ->using(UserSkill::class) // استخدم هذا إذا كان لديك نموذج UserSkill Pivot مخصص
+                    ->withPivot('Stage');
     }
 
-    /**
-     * Get the articles created by the user.
-     */
     public function articles(): HasMany
     {
-        return $this->hasMany(Article::class, 'UserID'); // Adjust FK if needed
+        return $this->hasMany(Article::class, 'UserID', 'UserID');
     }
 
-    /**
-     * Get the company managed by the user. (Assuming one user manages one company)
-     */
     public function company(): HasOne
     {
-        return $this->hasOne(Company::class, 'UserID'); // Adjust FK if needed
+        return $this->hasOne(Company::class, 'UserID', 'UserID');
     }
 
-    /**
-     * Get the job opportunities created by the user.
-     */
     public function jobOpportunities(): HasMany
     {
-        return $this->hasMany(JobOpportunity::class, 'UserID'); // Adjust FK if needed
+        return $this->hasMany(JobOpportunity::class, 'UserID', 'UserID');
     }
 
-    /**
-     * Get the job applications submitted by the user.
-     */
     public function jobApplications(): HasMany
     {
-        return $this->hasMany(JobApplication::class, 'UserID'); // Adjust FK if needed
+        return $this->hasMany(JobApplication::class, 'UserID', 'UserID');
     }
 
-     /**
-      * Get the training courses created by the user.
-      */
      public function createdTrainingCourses(): HasMany
      {
-         return $this->hasMany(TrainingCourse::class, 'UserID'); // Adjust FK if needed
+         return $this->hasMany(TrainingCourse::class, 'UserID', 'UserID');
      }
 
-    /**
-     * Get the enrollments for the user.
-     */
     public function enrollments(): HasMany
     {
-        return $this->hasMany(Enrollment::class, 'UserID'); // Adjust FK if needed
+        return $this->hasMany(Enrollment::class, 'UserID', 'UserID');
     }
 
-    /**
-     * The training courses the user is enrolled in.
-     */
     public function enrolledCourses(): BelongsToMany
     {
-        // Assuming 'enrollments' is the pivot table name
         return $this->belongsToMany(TrainingCourse::class, 'enrollments', 'UserID', 'CourseID')
-                    ->withPivot('Status', 'Date', 'Complet Date') // Include extra pivot data
-                    ->withTimestamps(); // If pivot table has timestamps
+                    ->withPivot('Status', 'Date', 'Complet Date')
+                    ->withTimestamps();
     }
 }

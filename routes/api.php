@@ -64,13 +64,14 @@ Route::prefix('v1')->group(function () {
     Route::apiResource('jobs', ApiJobOpportunityController::class)->only(['index', 'show']);
     Route::apiResource('courses', ApiTrainingCourseController::class)->only(['index', 'show']);
     Route::apiResource('companies', ApiCompanyController::class)->only(['index', 'show']);
-    Route::apiResource('groups', ApiGroupController::class)->only(['index', 'show']);
     Route::apiResource('skills', ApiSkillController::class)->only(['index']); // بحث عن مهارات
 
 });
 
 // --- مسارات API المحمية (تتطلب مصادقة توكن Sanctum) ---
 Route::prefix('v1')->middleware('auth:sanctum')->group(function () {
+    
+    Route::apiResource('groups', ApiGroupController::class)->only(['index', 'show']);
 
     // مصادقة API (تسجيل الخروج)
     Route::post('/logout', [AuthController::class, 'logout']);
