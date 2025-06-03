@@ -12,6 +12,7 @@ class Article extends Model
 
     protected $table = 'articles'; // Corrected spelling
     protected $primaryKey = 'ArticleID'; // Corrected spelling
+    
 
     // Assuming timestamps are useful here (created_at for 'Date')
     // public $timestamps = true; // Default is true
@@ -23,6 +24,8 @@ class Article extends Model
         'Date', // Can be handled by created_at or explicitly set
         'Type',
         'Article Photo', // Recommended: article_photo
+         'UserID', 'Title', 'Description', 'Type', 'Article Photo', 'Date',
+    'pdf_attachment', // <-- إضافة هذا
     ];
 
     /**

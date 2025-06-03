@@ -1,68 +1,73 @@
-@extends('layouts.consultant') {{-- أو layouts.app --}}
-@section('title', 'Article Details: ' . Str::limit($article->Title, 30))
+@extends('layouts.app') {{-- أو layouts.consultant إذا كانت نسخة الاستشاري هي من تستدعي هذا --}}
+{{-- تأكد من أن الـ Layout المستخدم (layouts.app أو layouts.consultant) يقوم بتحميل Bootstrap --}}
 
-@section('header')
-     <div class="d-flex justify-content-between align-items-center">
-        <h2 class="h4 mb-0 text-primary">
-            <i class="fas fa-newspaper me-2"></i> Article Details
-        </h2>
-        <div>
-             <a href="{{ route('articles.show', $article) }}" class="btn btn-sm btn-outline-info me-2" target="_blank">
-                 <i class="fas fa-eye me-1"></i> View Public Page
-             </a>
-             <a href="{{ route('consultant.articles.index') }}" class="btn btn-sm btn-outline-secondary">
-                 <i class="fas fa-arrow-left me-1"></i> Back to My Articles
-            </a>
-        </div>
-    </div>
-@endsection
+@section('title', $article->Title ?? 'Article Details') {{-- استخدام عنوان المقال كعنوان للصفحة --}}
 
 @section('content')
-    <div class="card shadow-sm mb-4">
-        <div class="card-header d-flex justify-content-between align-items-center">
-            <span>{{ $article->Title }}</span>
-            <span class="badge bg-info">{{ $article->Type }}</span>
-        </div>
-        <div class="card-body">
-            {{-- عرض الصورة --}}
-            @if($article->{'Article Photo'})
-                <div class="mb-3 text-center">
-                    <img src="{{ asset('storage/' . $article->{'Article Photo'}) }}" alt="{{ $article->Title }}" class="img-fluid rounded shadow-sm mx-auto" style="max-height: 250px;">
+<div class="py-8">
+    <div class="max-w-4xl mx-auto sm:px-6 lg:px-8">
+        <div class="card shadow-sm sm:rounded-lg">
+            <article class="p-6 md:p-8"> {{-- زيادة padding لراحة المحتوى --}}
+
+                {{-- عنوان المقال --}}
+                <h1 class="text-3xl font-bold mb-4">{{ $article->Title }}</h1>
+
+                {{-- معلومات المقال (المؤلف، النوع، التاريخ، وأزرار التعديل/الحذف) --}}
+                <div class="text-sm text-muted mb-6 border-bottom pb-3 d-flex justify-content-between align-items-center flex-wrap"> {{-- إضافة flex-wrap --}}
+                    <div>
+                        <span>Published by:
+                            {{-- تأكد أن الكنترولر يحمل علاقة user --}}
+                            <a href="{{ route('admin.users.show', $article->user) }}" class="text-primary text-decoration-none" title="View Author Profile">
+                                {{ $article->user->username ?? 'Unknown Author' }}
+                            </a>
+                        </span> |
+                        <span>Category: <span class="badge bg-info text-dark">{{ $article->Type }}</span></span> |
+                        <span>{{ $article->Date ? $article->Date->format('F j, Y') : 'N/A' }}</span>
+                    </div>
+                     {{-- أزرار التعديل/الحذف للمؤلف أو الأدمن (يجب أن يتم التحقق منها في الكنترولر) --}}
+                     @auth
+                        @if(Auth::id() === $article->UserID || (Auth::user()->type === 'Admin'))
+                             <div class="btn-group btn-group-sm mt-2 mt-sm-0"> {{-- إضافة margin للتجاوب --}}
+                                <a href="{{ route('consultant.articles.edit', $article) }}" class="btn btn-warning" title="Edit"><i class="fas fa-edit"></i> Edit</a>
+                                <form action="{{ route('consultant.articles.destroy', $article) }}" method="POST" class="d-inline" onsubmit="return confirm('Are you sure you want to delete this article?');">
+                                    @csrf @method('DELETE')
+                                    <button type="submit" class="btn btn-danger" title="Delete"><i class="fas fa-trash"></i> Delete</button>
+                                </form>
+                             </div>
+                         @endif
+                     @endauth
                 </div>
-            @endif
 
-            {{-- عرض الوصف --}}
-            <h5 class="card-title">Description</h5>
-            <p class="text-muted mb-3" style="white-space: pre-wrap;">{{ $article->Description }}</p>
+                {{-- صورة المقال (إذا كانت موجودة) --}}
+                @if ($article->{'Article Photo'} && Storage::disk('public')->exists($article->{'Article Photo'}))
+                    <div class="mb-4 text-center">
+                         <img src="{{ Storage::disk('public')->url($article->{'Article Photo'}) }}" alt="{{ $article->Title }}" class="img-fluid rounded shadow-sm" style="max-height: 400px; object-fit: contain;">
+                    </div>
+                @endif
 
-            <hr>
+                {{-- !!! جزء عرض ملف PDF !!! --}}
+                @if ($article->pdf_attachment && Storage::disk('public')->exists($article->pdf_attachment))
+                    <div class="mb-4 text-center p-3 border rounded bg-light">
+                        <p class="mb-2 text-dark">Download attached document for full details:</p>
+                        <a href="{{ Storage::disk('public')->url($article->pdf_attachment) }}" target="_blank" class="btn btn-primary">
+                            <i class="fas fa-file-pdf me-2"></i> Download PDF
+                        </a>
+                    </div>
+                @endif
+                {{-- !!! نهاية جزء عرض ملف PDF !!! --}}
 
-            {{-- معلومات إضافية --}}
-            <dl class="row mt-3">
-                <dt class="col-sm-3">Author:</dt>
-                <dd class="col-sm-9">{{ $article->user->username ?? 'N/A' }}</dd> {{-- يفترض أنه أنت --}}
 
-                <dt class="col-sm-3">Published Date:</dt>
-                <dd class="col-sm-9">{{ $article->Date ? $article->Date->format('Y-m-d H:i') : 'N/A' }}</dd>
+                {{-- محتوى المقال --}}
+                {{-- استخدام lead لجعل النص أكبر قليلاً و white-space: pre-wrap للحفاظ على تنسيق الأسطر الجديدة --}}
+                <div class="lead mb-4" style="white-space: pre-wrap;">{{ $article->Description }}</div>
 
-                <dt class="col-sm-3">Last Updated:</dt>
-                <dd class="col-sm-9">{{ $article->updated_at->format('Y-m-d H:i') }}</dd>
-            </dl>
+
+            </article>
         </div>
-         {{-- أضف إحصائيات المشاهدة أو التعليقات هنا إذا أردت --}}
-    </div>
-
-     {{-- أزرار الإجراءات --}}
-    <div class="mt-4 d-flex justify-content-end gap-2">
-        <a href="{{ route('consultant.articles.edit', $article) }}" class="btn btn-warning">
-            <i class="fas fa-edit me-1"></i> Edit Article
-        </a>
-        <form action="{{ route('consultant.articles.destroy', $article) }}" method="POST" onsubmit="return confirm('Are you sure?');">
-            @csrf
-            @method('DELETE')
-            <button type="submit" class="btn btn-danger">
-                <i class="fas fa-trash me-1"></i> Delete Article
-            </button>
-        </form>
+         <div class="mt-4 text-center">
+             <a href="{{ route('articles.index') }}" class="btn btn-secondary">
+                 <i class="fas fa-arrow-left me-1"></i> Back to All Articles
+             </a>
+         </div>
     </div>
 @endsection

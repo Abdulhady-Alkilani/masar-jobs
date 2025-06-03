@@ -74,6 +74,7 @@ class ProfileController extends Controller
         ]);
 
          if ($request->hasFile('photo') && $request->file('photo')->isValid()) {
+            print($request);
              // TODO: Delete old photo
              $validatedUserData['photo'] = $request->file('photo')->store('user_photos', 'public');
          }

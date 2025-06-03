@@ -1,36 +1,50 @@
-{{-- يعرض رسائل الحالة (success, error, warning, info) --}}
+{{-- resources/views/partials/_alerts.blade.php (الكود المصحح) --}}
 
+{{-- رسالة النجاح --}}
 @if (session('success'))
-    <div class="mb-4 px-4 py-3 leading-normal text-green-700 bg-green-100 border border-green-400 rounded-lg" role="alert">
-        <p>{{ session('success') }}</p>
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="fas fa-check-circle me-2"></i>
+        {{ session('success') }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
     </div>
 @endif
 
+{{-- رسالة الخطأ --}}
 @if (session('error'))
-    <div class="mb-4 px-4 py-3 leading-normal text-red-700 bg-red-100 border border-red-400 rounded-lg" role="alert">
-        <p>{{ session('error') }}</p>
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="fas fa-times-circle me-2"></i>
+        {{ session('error') }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
     </div>
 @endif
 
+{{-- رسالة التحذير --}}
 @if (session('warning'))
-     <div class="mb-4 px-4 py-3 leading-normal text-yellow-700 bg-yellow-100 border border-yellow-400 rounded-lg" role="alert">
-        <p>{{ session('warning') }}</p>
+     <div class="alert alert-warning alert-dismissible fade show" role="alert">
+        <i class="fas fa-exclamation-triangle me-2"></i>
+        {{ session('warning') }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
     </div>
 @endif
 
+{{-- رسالة المعلومات --}}
 @if (session('info'))
-     <div class="mb-4 px-4 py-3 leading-normal text-blue-700 bg-blue-100 border border-blue-400 rounded-lg" role="alert">
-        <p>{{ session('info') }}</p>
+     <div class="alert alert-info alert-dismissible fade show" role="alert">
+        <i class="fas fa-info-circle me-2"></i>
+        {{ session('info') }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
     </div>
 @endif
 
-{{-- عرض أخطاء التحقق من الصحة العامة (غير مرتبطة بحقل معين) --}}
-@if ($errors->any() && !$errors->hasBags()) {{-- تأكد من عدم عرض الأخطاء العامة إذا كانت هناك أخطاء حقول --}}
-    <div class="mb-4 px-4 py-3 leading-normal text-red-700 bg-red-100 border border-red-400 rounded-lg" role="alert">
-        <p class="font-bold">{{ __('Whoops! Something went wrong.') }}</p>
-        <ul class="mt-2 list-disc list-inside text-sm">
+{{-- عرض أخطاء التحقق من الصحة العامة (غير مرتبطة بحقل معين أو بـ error bag محدد) --}}
+{{-- يتم عرضها فقط إذا كان هناك أخطاء بشكل عام، ولا توجد error bags مخصصة --}}
+@if ($errors->any() && empty($errors->getBags())) {{-- !!! هذا هو السطر الذي تم تصحيحه !!! --}}
+    <div class="alert alert-danger mt-3" role="alert">
+        <h4 class="alert-heading"><i class="fas fa-exclamation-triangle me-2"></i> {{ __('general.something_went_wrong_errors') ?? 'Please correct the following errors:' }}</h4>
+        <hr class="my-2">
+        <ul class="mb-0 list-unstyled small">
             @foreach ($errors->all() as $error)
-                <li>{{ $error }}</li>
+                <li><i class="fas fa-times-circle fa-xs me-1 text-danger"></i> {{ $error }}</li>
             @endforeach
         </ul>
     </div>
