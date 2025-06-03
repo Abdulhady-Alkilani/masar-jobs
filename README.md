@@ -638,4 +638,4 @@ These endpoints require the user to be authenticated and have the 'Admin' role. 
     *   **Success Response (200):** `{ "message": "Company rejected." }`
     *   **Error Responses:** `404`, `403` (if not pending)
 
----
+------------------------------------------------

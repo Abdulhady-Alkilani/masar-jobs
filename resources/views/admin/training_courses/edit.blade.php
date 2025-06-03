@@ -34,7 +34,7 @@
                 {{-- $creators يجب أن يتم تمريرها من الكنترولر --}}
                 @include('admin.training_courses._form', [
                     'trainingCourse' => $trainingCourse,
-                    'creators' => $creators ?? [] {{-- توفير قيمة افتراضية --}}
+                    'creators' => $creators ?? [] 
                 ])
 
             </form>
