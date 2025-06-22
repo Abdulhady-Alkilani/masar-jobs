@@ -6,6 +6,7 @@ export default defineConfig({
     plugins: [
         laravel({
             input: [
+                'resources/css/app.css', // قد يكون لديك ملف CSS بدلاً من Sass أو كلاهما
                 'resources/sass/app.scss', // لـ Bootstrap
                 'resources/js/app.js',     // لـ Bootstrap JS و Vue app initialization
             ],

@@ -38,6 +38,7 @@ use App\Http\Controllers\API\V1\Consultant\ManagedArticleController as ApiManage
 use App\Http\Controllers\API\V1\Admin\UserController as ApiAdminUserController;
 use App\Http\Controllers\API\V1\Admin\CompanyRequestController as ApiAdminCompanyRequestController;
 // (الأدمن قد يستخدم نفس وحدات التحكم العامة ولكن مع صلاحيات كاملة تتحقق داخلها)
+use App\Http\Controllers\API\V1\UserCompanyRequestController; // <--- إضافة هذا الاستيراد
 
 
 /*
@@ -84,6 +85,9 @@ Route::prefix('v1')->middleware('auth:sanctum')->group(function () {
     Route::put('/profile', [ApiProfileController::class, 'update']); // تحديث الملف الشخصي للمستخدم الحالي
     Route::post('/profile/skills', [ApiProfileController::class, 'syncSkills']); // تحديث مهارات المستخدم الحالي
 
+    Route::post('/company-requests', [UserCompanyRequestController::class, 'store']); // <--- إضافة هذا الراوت
+
+
     // طلبات التوظيف الخاصة بالمستخدم
     Route::get('/my-applications', [ApiUserJobApplicationController::class, 'index']);
     Route::post('/jobs/{job_opportunity}/apply', [ApiUserJobApplicationController::class, 'store']); // تقديم طلب
@@ -110,7 +114,7 @@ Route::prefix('v1')->middleware('auth:sanctum')->group(function () {
     // --- مسارات الاستشاري ---
     Route::prefix('consultant')->middleware(['auth:sanctum'/*, 'isConsultant'*/])->group(function () {
         Route::apiResource('articles', ApiManagedArticleController::class); // إدارة مقالات الاستشاري
-        // Route::apiResource('courses', ApiManagedTrainingCourseController::class); // إذا كان الاستشاري ينشر دورات
+         Route::apiResource('courses', ApiManagedTrainingCourseController::class); // إذا كان الاستشاري ينشر دورات
         // Route::get('/courses/{training_course}/enrollees', [ApiEnrolleeController::class, 'index']); // إذا كان الاستشاري ينشر دورات
     });
 
