@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\API\V1;
 
+namespace App\Http\Controllers\API\V1;
+
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\User;
@@ -9,7 +11,8 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rules\Password;
 use Illuminate\Validation\ValidationException;
-
+use App\Models\Profile; // <-- تأكد من استيراد موديل Profile
+use App\Models\Company;
 class AuthController extends Controller
 {
     public function register(Request $request)
@@ -20,8 +23,8 @@ class AuthController extends Controller
             'username' => 'required|string|max:255|unique:users,username',
             'email' => 'required|string|email|max:255|unique:users,email',
             'password' => ['required', 'confirmed', Password::defaults()],
-            'phone' => 'nullable|string|max:20', // Adjust validation as needed
-            'type' => 'required|string|in:خريج,خبير استشاري,مدير شركة', // Only allow these types for self-registration?
+            'phone' => 'nullable|string|max:20',
+            'type' => 'required|string|in:خريج,خبير استشاري,مدير شركة', // <--- السماح باختيار النوع مجدداً
         ]);
 
         $user = User::create([
@@ -31,26 +34,33 @@ class AuthController extends Controller
             'email' => $validatedData['email'],
             'password' => Hash::make($validatedData['password']),
             'phone' => $validatedData['phone'] ?? null,
-            'type' => $validatedData['type'],
-            'status' => 'مفعل', // Or 'pending' if admin approval needed for some types?
-             // Add default email_verified status if needed
+            'type' => $validatedData['type'], // <--- استخدام النوع المختار
+            'status' => 'مفعل',
+            // Add default email_verified status if needed
         ]);
 
-        // Optionally create related profile/company based on type
-         if ($user->type === 'خريج' || $user->type === 'خبير استشاري') {
-             $user->profile()->create([]); // Create empty profile
-         }
-         // Consider company creation/request workflow for 'مدير شركة'
+        // إنشاء Profile افتراضي لجميع المستخدمين (أو فقط للخريج والاستشاري؟)
+        // بما أن Profile يحتوي بيانات عامة، لننشئه للجميع
+        if (!$user->profile) { // Avoid duplicates if logic changes later
+             $user->profile()->create([]);
+        }
+
+        // لا يتم إنشاء سجل الشركة هنا للمدير، سيتم بطلبه لاحقاً
+
 
         $token = $user->createToken('auth_token')->plainTextToken;
+
+        // Load relations relevant immediately after registration
+        $user->load(['profile', 'company']); // company relation might be null for new manager/graduate
 
         return response()->json([
             'message' => 'User registered successfully',
             'access_token' => $token,
             'token_type' => 'Bearer',
-            'user' => $user->load('profile') // Return user data (consider UserResource)
+            'user' => $user // Return user data with profile
         ], 201);
     }
+
 
     public function login(Request $request)
     {

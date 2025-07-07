@@ -8,6 +8,9 @@ use App\Models\JobOpportunity;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon;
+use App\Notifications\NewJobApplicationNotification; // <-- استيراد Notification Class
+use Illuminate\Support\Facades\Notification; // <-- استيراد Notification Facade
+
 
 class UserJobApplicationController extends Controller
 {
@@ -30,9 +33,9 @@ class UserJobApplicationController extends Controller
      * Store a new job application for the authenticated user.
      * Route: POST /jobs/{job_opportunity}/apply
      */
-    public function store(Request $request, JobOpportunity $job_opportunity) // Route model binding
+     public function store(Request $request, JobOpportunity $job_opportunity) // Route model binding
     {
-        $user = $request->user();
+        $user = $request->user(); // The user who is applying
 
         // Check if user already applied
         $existingApplication = JobApplication::where('UserID', $user->UserID)
@@ -50,7 +53,7 @@ class UserJobApplicationController extends Controller
 
         $validatedData = $request->validate([
             'Description' => 'nullable|string',
-            'CV' => 'nullable|string|max:255', // Or handle file upload
+            'CV' => 'nullable|string|max:255', // Or handle file upload logic here
         ]);
 
         $application = JobApplication::create([
@@ -61,6 +64,28 @@ class UserJobApplicationController extends Controller
             'Description' => $validatedData['Description'] ?? null,
             'CV' => $validatedData['CV'] ?? null, // Store path after upload
         ]);
+
+        // --- Send Notification to Job Poster (if they are a Company Manager) ---
+        // Eager load the user relationship on the job opportunity if it's not already loaded
+        $job_opportunity->load('user'); // Load the user who posted the job
+
+        $jobPoster = $job_opportunity->user;
+
+        // Check if the job poster exists AND is a Company Manager
+        if ($jobPoster && $jobPoster->type === 'مدير شركة') {
+            try {
+                 // Send the notification to the job poster
+                $jobPoster->notify(new NewJobApplicationNotification($application, $user));
+                // If you are queuing, the notification will be added to the queue table.
+                // You need a queue worker running (`php artisan queue:work`) to process it.
+            } catch (\Exception $e) {
+                // Log the error if notification sending fails
+                \Log::error("Failed to send NewJobApplicationNotification to UserID {$jobPoster->UserID} for Job ID {$job_opportunity->JobID}. Error: {$e->getMessage()}");
+                // You might choose to continue the request flow or return an error
+            }
+        }
+        // --- End Send Notification ---
+
 
         // Consider using JobApplicationResource
         return response()->json($application, 201);

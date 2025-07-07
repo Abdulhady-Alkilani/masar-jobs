@@ -4,187 +4,180 @@ namespace App\Http\Controllers\API\V1\Admin;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth; // إذا كنت ستتحقق من صلاحية الأدمن يدوياً هنا
-use Illuminate\Support\Facades\DB; // لاستخدام المعاملات (Transactions)
-use Illuminate\Support\Facades\Log; // لتسجيل الأخطاء
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage; // <-- استيراد Storage
 
-use App\Models\Company; // تأكد من المسار الصحيح لموديل الشركة
-use App\Models\User; // تأكد من المسار الصحيح لموديل المستخدم
-use App\Http\Resources\CompanyResource; // إذا كنت تستخدم API Resources (موصى به)
-use App\Http\Resources\CompanyCollection; // إذا كنت تستخدم API Resources (موصى به)
+use App\Models\Company;
+use App\Models\User; // Needed to access user data, but NOT to change type here
 
+
+// Consider using API Resources if you need to format the output
+// use App\Http\Resources\CompanyResource;
+// use App\Http\Resources\CompanyCollection;
 
 class ApiAdminCompanyRequestController extends Controller
 {
-    /**
-     * Instantiate a new controller instance.
-     * Apply admin check middleware to all methods in this controller.
-     */
+     /**
+      * Instantiate a new controller instance.
+      * Apply admin check middleware to all methods in this controller.
+      */
     // public function __construct()
     // {
     //     // TODO: Apply middleware to ensure only admins can access these routes
-    //     // $this->middleware('isAdmin'); // Assuming you create an 'isAdmin' middleware
-    //     // Or use Laravel's Gate/Policy checks within methods
+    //     // $this->middleware('isAdmin');
     // }
 
 
     /**
-     * Display a listing of pending company creation requests.
+     * Display a listing of pending company creation requests (Companies with status 'pending').
      * Route: GET /api/v1/admin/company-requests
      *
      * @param  \Illuminate\Http\Request  $request
-     * @return \Illuminate\Http\JsonResponse|\App\Http\Resources\CompanyCollection
+     * @return \Illuminate\Http\JsonResponse
      */
     public function index(Request $request)
     {
         // TODO: Add Authorization check (Gate/Policy or Middleware) - Admin Only
-        // Example using Gate: $this->authorize('viewAny', Company::class); // Requires a Policy for Company
+        // Example using Gate: $this->authorize('viewAny', Company::class);
 
-        // جلب الشركات التي حالتها 'pending' مع بيانات المستخدم المرتبط بها
-        // Eager load the user relationship
         $pendingCompanies = Company::where('status', 'pending')
-                                   ->with('user:UserID,first_name,last_name,email,type') // تأكد من تحميل البيانات اللازمة للمستخدم
-                                   ->latest() // ترتيب الأحدث أولاً
-                                   ->paginate(15); // تطبيق Pagination
+                                   ->with('user:UserID,first_name,last_name,email,type') // Eager load user details
+                                   ->latest()
+                                   ->paginate(15);
 
-
-        // استخدام CompanyCollection إذا كنت تستخدم API Resources
-        // return new CompanyCollection($pendingCompanies);
-
-        // أو إعادة البيانات كـ JSON مباشرة
-        return response()->json($pendingCompanies); // يعيد استجابة Paginated JSON
+        // Consider using CompanyCollection
+        return response()->json($pendingCompanies);
     }
 
     /**
      * Approve a company creation request.
+     * Changes company status to 'approved' and moves the media file.
+     * The user's type is assumed to be 'مدير شركة' already.
      * Route: PUT /api/v1/admin/company-requests/{company}/approve
      *
-     * @param  \App\Models\Company  $company // Route model binding
-     * @return \Illuminate\Http\JsonResponse|\App\Http\Resources\CompanyResource
+     * @param  \App\Models\Company  $company // Route model binding (fetches the company record)
+     * @return \Illuminate\Http\JsonResponse
      */
     public function approve(Company $company)
     {
         // TODO: Add Authorization check (Gate/Policy or Middleware) - Admin Only
-        // Example using Gate: $this->authorize('approve', $company); // Requires a Policy for Company and 'approve' Gate
+        // Example using Gate: $this->authorize('approve', $company);
 
-        // تحقق مما إذا كانت الشركة بالفعل في حالة 'pending'
+        // Ensure the company is currently pending
         if ($company->status !== 'pending') {
             return response()->json(['message' => 'Company is not pending approval.'], 400); // Bad Request
         }
 
-        // TODO: تحقق من وجود المستخدم المرتبط بالشركة
-        // يفترض أن العلاقة 'user' محددة في موديل Company (belongsTo)
-        $user = $company->user; // جلب المستخدم المرتبط
+        // Fetch the associated user (should be a 'مدير شركة' user)
+        $user = $company->user;
 
-        // إذا لم يتم العثور على المستخدم المرتبط (حالة غير متوقعة لكن ممكنة)
-        if (!$user) {
-             Log::error("Admin attempted to approve company ID {$company->CompanyID} but no associated user found.");
-             return response()->json(['message' => 'Associated user not found.'], 404); // Not Found
+        // Basic check if associated user exists and is the expected type
+        if (!$user || $user->type !== 'مدير شركة') {
+             $logMessage = "Admin attempted to approve company ID {$company->CompanyID}. ";
+             if (!$user) $logMessage .= "No associated user found.";
+             else $logMessage .= "Associated user UserID {$user->UserID} is type {$user->type}, not 'مدير شركة'.";
+             Log::error($logMessage);
+             // You might return 400 Bad Request or 404 Not Found depending on how you frame the error
+             return response()->json(['message' => 'Associated user is not valid for company approval.'], 400);
         }
 
-        // استخدام المعاملات (Transactions) لضمان تحديث الشركة والمستخدم معاً أو لا شيء
+
+        // Get the temporary media path from the company record
+        $temporaryMediaPath = $company->Media;
+        $permanentMediaPath = $temporaryMediaPath; // Initialize with temp path
+
+        // Use transactions for atomicity
         DB::beginTransaction();
 
         try {
-            // 1. تحديث حالة الشركة إلى 'approved'
+            // --- Handle Media File (Move from pending to permanent) ---
+            if ($temporaryMediaPath && Storage::disk('public')->exists($temporaryMediaPath)) {
+                $permanentMediaPath = str_replace('companies/pending/media', 'companies/media', $temporaryMediaPath);
+                Storage::disk('public')->createDirectory('companies/media');
+                Storage::disk('public')->move($temporaryMediaPath, $permanentMediaPath);
+                 Log::info("Moved company media file from {$temporaryMediaPath} to {$permanentMediaPath} for CompanyID {$company->CompanyID} during approval.");
+            } else {
+                 $permanentMediaPath = null; // Ensure the DB field is null
+                 if ($temporaryMediaPath) {
+                     Log::warning("Company media path {$temporaryMediaPath} found in DB for CompanyID {$company->CompanyID} but file does not exist on disk during approval.");
+                 }
+            }
+            // --- End Handle Media File ---
+
+            // Update company status to 'approved' and save the permanent media path
             $company->status = 'approved';
+            $company->Media = $permanentMediaPath; // Save the new permanent path
             $company->save();
 
-            // 2. تحديث دور المستخدم المرتبط ليصبح 'مدير شركة'
-            // تحقق قبل التحديث إذا لم يكن بالفعل مدير شركة أو أدمن (حالة غير متوقعة لكن للأمان)
-            if ($user->type !== 'مدير شركة' && $user->type !== 'Admin') {
-                 $user->type = 'مدير شركة';
-                 $user->save();
-            } else {
-                 // إذا كان المستخدم بالفعل مدير شركة أو أدمن، قد تريد تسجيل هذا كتحذير
-                 Log::warning("Admin attempted to approve company for user ID {$user->UserID} who is already type {$user->type}");
-            }
+            // !!! IMPORTANT: In this scenario, the user is ALREADY 'مدير شركة'.
+            // !!! We do NOT change the user type here.
 
-            // TODO: إرسال إشعار للمستخدم بأن شركته تمت الموافقة عليها (مثلاً Notification)
+            // TODO: Send notification to the user that their company request was approved
 
-            DB::commit(); // تطبيق التغييرات
+            DB::commit(); // Apply changes
 
-            // إعادة تحميل المستخدم المرتبط لضمان أن العلاقة في كائن الشركة تحتوي على أحدث بيانات المستخدم
-             $company->load('user');
+            // Optionally reload user relationship
+            $company->load('user');
 
-            // استخدام CompanyResource إذا كنت تستخدم API Resources
-            // return new CompanyResource($company);
-
-            // أو إعادة البيانات كـ JSON مباشرة
             return response()->json([
                 'message' => 'Company approved successfully.',
-                'company' => $company // إعادة بيانات الشركة المحدثة مع بيانات المستخدم المرتبط
-            ]); // 200 OK هو الافتراضي
+                'company' => $company
+            ]);
 
         } catch (\Exception $e) {
-            DB::rollBack(); // التراجع عن التغييرات في حالة حدوث خطأ
-            Log::error("Error approving company ID {$company->CompanyID}: {$e->getMessage()}"); // تسجيل الخطأ في سجلات Laravel
-
-            return response()->json(['message' => 'Failed to approve company due to a server error.', 'error' => $e->getMessage()], 500); // Internal Server Error
+            DB::rollBack();
+            Log::error("Error approving company ID {$company->CompanyID}: {$e->getMessage()}");
+            return response()->json(['message' => 'Failed to approve company due to a server error.', 'error' => $e->getMessage()], 500);
         }
     }
 
     /**
      * Reject a company creation request.
+     * Deletes the company record and the associated temporary media file.
      * Route: PUT /api/v1/admin/company-requests/{company}/reject
      *
      * @param  \App\Models\Company  $company // Route model binding
-     * @return \Illuminate\Http\JsonResponse|\App\Http\Resources\CompanyResource
+     * @return \Illuminate\Http\JsonResponse
      */
     public function reject(Company $company)
     {
         // TODO: Add Authorization check (Gate/Policy or Middleware) - Admin Only
-        // Example using Gate: $this->authorize('reject', $company); // Requires a Policy for Company and 'reject' Gate
+        // Example using Gate: $this->authorize('reject', $company);
 
-        // تحقق مما إذا كانت الشركة بالفعل في حالة 'pending'
+        // Ensure the company is currently pending
         if ($company->status !== 'pending') {
-            return response()->json(['message' => 'Company is not pending approval.'], 400); // Bad Request
+            return response()->json(['message' => 'Company is not pending rejection.'], 400); // Bad Request
         }
 
-        // استخدام المعاملات لضمان التناسق إذا كان هناك عمليات أخرى مرتبطة بالرفض
-        DB::beginTransaction();
+        // Get the temporary media path before deleting the record
+        $temporaryMediaPath = $company->Media;
 
+        // Use transactions for safety
+         DB::beginTransaction();
         try {
-            // 1. تحديث حالة الشركة إلى 'rejected'
-            $company->status = 'rejected';
-            $company->save();
+            // Delete the company record.
+            $company->delete();
 
-            // TODO: إرسال إشعار للمستخدم بأن طلبه تم رفضه (مثلاً Notification)
+            // --- Handle Media File (Delete temporary file) ---
+             if ($temporaryMediaPath && Storage::disk('public')->exists($temporaryMediaPath)) {
+                 Storage::disk('public')->delete($temporaryMediaPath);
+                 Log::info("Deleted temporary company media file {$temporaryMediaPath} for rejected CompanyID {$company->CompanyID}.");
+             }
+            // --- End Handle Media File ---
 
-            DB::commit(); // تطبيق التغييرات
 
-             // إعادة تحميل المستخدم المرتبط إذا كنت تريد إعادته في الاستجابة
-             $company->load('user');
+            // TODO: Send notification to the user that their company request was rejected
 
-            // استخدام CompanyResource إذا كنت تستخدم API Resources
-            // return new CompanyResource($company);
+             DB::commit();
 
-            // أو إعادة البيانات كـ JSON مباشرة
-            return response()->json([
-                'message' => 'Company rejected successfully.',
-                'company' => $company // إعادة بيانات الشركة المحدثة
-            ]); // 200 OK هو الافتراضي
+            return response()->json(['message' => 'Company rejected and removed successfully.']); // 200 OK
 
         } catch (\Exception $e) {
-            DB::rollBack(); // التراجع عن التغييرات
-             Log::error("Error rejecting company ID {$company->CompanyID}: {$e->getMessage()}"); // تسجيل الخطأ
-
-            return response()->json(['message' => 'Failed to reject company due to a server error.', 'error' => $e->getMessage()], 500); // Internal Server Error
+             DB::rollBack();
+             Log::error("Error rejecting company ID {$company->CompanyID} (delete+cleanup): {$e->getMessage()}");
+            return response()->json(['message' => 'Failed to reject company due to a server error.', 'error' => $e->getMessage()], 500);
         }
-
-        // الخيار البديل للرفض (حذف سجل الشركة بدلاً من تغيير حالته):
-        /*
-        public function reject(Company $company) {
-             // TODO: Authorization & pending check...
-             try {
-                 $company->delete(); // حذف الشركة
-                 // TODO: إرسال إشعار بأن الطلب تم رفضه وتم حذف البيانات
-                 return response()->json(['message' => 'Company rejected and removed successfully.']); // 200 OK
-             } catch (\Exception $e) {
-                  Log::error("Error deleting rejected company ID {$company->CompanyID}: {$e->getMessage()}");
-                  return response()->json(['message' => 'Failed to reject company due to a server error.', 'error' => $e->getMessage()], 500);
-             }
-        }
-        */
     }
 }
