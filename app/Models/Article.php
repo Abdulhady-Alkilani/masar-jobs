@@ -19,13 +19,12 @@ class Article extends Model
 
     protected $fillable = [
         'UserID',
-        'Title', // Corrected spelling
-        'Description', // Corrected spelling
-        'Date', // Can be handled by created_at or explicitly set
+        'Title',
+        'Description',
+        'Date',
         'Type',
-        'Article Photo', // Recommended: article_photo
-         'UserID', 'Title', 'Description', 'Type', 'Article Photo', 'Date',
-    'pdf_attachment', // <-- إضافة هذا
+        'Article Photo',
+        'pdf_attachment',
     ];
 
     /**

@@ -10,6 +10,7 @@ use App\Models\User; // We will mostly work with the User model directly now
 use App\Models\Skill; // Needed for syncSkills (although keeping it separate)
 use Illuminate\Support\Arr; // For array manipulation
 use Illuminate\Support\Facades\Storage; // For handling user photo file
+use Illuminate\Support\Facades\DB; // <-- Add this line
 
 class ProfileController extends Controller
 {

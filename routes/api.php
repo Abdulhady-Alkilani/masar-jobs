@@ -69,7 +69,7 @@ Route::prefix('v1')->middleware('auth:sanctum')->group(function () {
     // جلب بيانات المستخدم الحالي وكافة علاقاته المهمة (لأي مستخدم مسجل دخول)
     Route::get('/user', function (Request $request) {
         // حمل العلاقات التي تحتاجها الواجهة الأمامية للمستخدم الحالي بشكل متكرر
-        return $request->user()->load(['profile.skills', 'company', 'createdTrainingCourses']);
+        return $request->user()->load(['profile', 'skills', 'company', 'createdTrainingCourses']);
     });
 
     // --- مسارات المستخدم الحالي (لأي مستخدم مسجل دخول) ---
@@ -87,20 +87,12 @@ Route::prefix('v1')->middleware('auth:sanctum')->group(function () {
     Route::get('/my-enrollments', [ApiUserEnrollmentController::class, 'index']);
     Route::post('/courses/{training_course}/enroll', [ApiUserEnrollmentController::class, 'store']);
     Route::delete('/my-enrollments/{enrollment}', [ApiUserEnrollmentController::class, 'destroy']);
-
+    
 
     Route::post('/company-requests', [UserCompanyRequestController::class, 'store']); // <--- إضافة هذا الراوت
 
-
-
     // توصيات المستخدم
     Route::get('/recommendations', [ApiRecommendationController::class, 'index']);
-
-    // إدارة الإشعارات الخاصة بالمستخدم
-    Route::get('/notifications', [UserNotificationController::class, 'index']);
-    Route::put('/notifications/{notification}', [UserNotificationController::class, 'markAsRead']);
-    Route::delete('/notifications/{notification}', [UserNotificationController::class, 'destroy']);
-    Route::post('/notifications/mark-all-as-read', [UserNotificationController::class, 'markAllAsRead']);
 
 
     // --- مسارات مدير الشركة (تتطلب صلاحية مدير شركة) ---
